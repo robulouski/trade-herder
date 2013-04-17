@@ -3,7 +3,7 @@
 # csv_us2au_date.py
 #
 # by Robert Iwancz <robulouski@gmail.com>
-# Last updated Feb 2013
+# Last updated Apr 2013
 #
 # Takes CSV file with a date/datetime field in US format: 
 #   MM/DD/YYYY <optional-time-part> 
@@ -36,19 +36,21 @@ prog = re.compile(r'(\d+)/(\d+)/(\d+)(.*)')
 of = open(output_filename, "wb")
 
 with open(input_filename, 'rb') as csvfile:
+    writer = csv.writer(of)
     reader = csv.reader(csvfile)
-    next(csvfile)
+    next(csvfile) 	# skip first line!
 
     for row in reader:
         m = prog.search(row[field_index])
         if m is None:
             print "INVALID DATE AT LINE %d" % (reader.line_num)
+            v = row[field_index]
+            row[field_index] = '"' + v + '"'
         else:
             row[field_index] = "%02d/%02d/%d" % (int(m.group(2)), 
                                                  int(m.group(1)), 
                                                  int(m.group(3)))
             if m.group(4):
                 row[field_index] += m.group(4)
-            of.write(','.join(row))
-            of.write('\n')
+        writer.writerow(row)
 
