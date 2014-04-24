@@ -257,7 +257,7 @@ def csv_export(start_date, end_date, dirname):
 
 
 if __name__ ==  "__main__":
-    parser = argparse.ArgumentParser(description='ig-csv-export: Export trading data into CSV files')
+    parser = argparse.ArgumentParser(description='cfd-csv-export: Export trading data into CSV files')
     parser.add_argument('--start', type=mkdate, help='start date')
     parser.add_argument('--end', type=mkdate, help='end date')
     parser.add_argument('--fyau', type=int, help='Australian financial year (ending)')

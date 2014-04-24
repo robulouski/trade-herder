@@ -9,36 +9,42 @@ Mostly written so as to avoid using Excel.  Because Excel can be annoying
 was like, "screw spreadsheets, I'll write some scripts to do this stuff
 instead!"  And here they are, in all their hacky quick and dirty goodness.
 
-The initial problem these scripts were written to solve was this:
+Apart from the tedious and repetitive point and clickyness of doing this in
+a spreadsheet, I was getting frustrated by Excel's remarkable ability to
+find unique and unexpected ways to mangle the data each step of the way.
+So I decided to write scripts (and use Unix tools) to do as much processing
+of the data as possible (as automatically as possible) without going
+anywhere near a spreadsheet until the very end (and then only for
+formatting/styling).
 
-The option broker's trading platform provides an export of historical trade
-transactions (buys, sells, expiry, exercise) as a csv file.  I want to know
-the profit/loss of each "trade" (i.e. match up the buys and sells,
-calculate profit/loss).  Apart from the tedious and repetitive point and
-clickyness of doing this in a spreadsheet, I was getting frustrated by
-Excel's remarkable ability to find unique and unexpected ways to mangle the
-data each step of the way.  So I decided to write scripts (and use Unix
-tools) to do as much processing of the data as possible (as automatically
-as possible) without going anywhere near a spreadsheet until the very end
-(and then only for formatting/styling).  
+These scripts were motivated by a desire to automate the process of
+generating profit-loss reports, given (possibly inadequate) raw trade data
+from a (possibly inadequate) broker's online trading platform.  While I've
+often pondered how nice it would be to have some kind of software to do
+this in a "generic" way given disparate (and possibly inadequate) input
+file formats, for now these scripts are tailored to the specific input data
+of specific brokers.
 
 (It goes without saying these scripts come with no warranty, are not fit
-for any purpose whatsoever, and using them may cause a rift in the
-space–time continuum, unleashing hordes of Lovecraftian hell-beasts
-hell-bent on the destruction of humanity.  Consider yourself warned.  They
-are mostly an exercise in Python programming and SQLAlchemy.  They do what
-I need them to do, and may eventually evolve into a more substantial piece
-of trading software, but at this stage nothing here is even close to
-production quality, or any but the loosest definition of "quality".  For
-various reasons I am deliberately avoiding any mention of the brokers and
-trading platform -- and their reporting deficiencies -- that motivated
-these scripts.)
+for any purpose whatsoever, and most certainly do not represent financial
+advice, or any advice whatsoever, nor are they endorsed by any individual
+or corporate entity, not even me.  They are mostly just an exercise in
+Python programming and SQLAlchemy.  They do what I need them to do, and may
+eventually evolve into a more substantial piece of trading software, but at
+this stage nothing here is even close to production quality, or any but the
+loosest definition of "quality".  For various reasons I am deliberately
+avoiding any mention of the brokers and trading platforms -- and their
+reporting deficiencies -- that motivated these scripts.)
 
 
 The Options Scripts
 -------------------
 
-The csv data file from the broker ("activity.csv") has the following fields:
+Assumes CSV input file of historical option trade transactions (buys,
+sells, expiry, exercise).  Goal is to get the profit/loss of each "trade"
+(i.e. match up the buys and sells, calculate profit/loss).
+
+The CSV input data file ("activity.csv") has the following fields:
 
 	Symbol, Description, Action, Quantity, Price, Commission, Reg Fees, Date, TransactionID, Order Number, Transaction Type ID, Total Cost
 
@@ -53,34 +59,36 @@ instead.  Hence the first script, designed to fix this, csv_us2au_date.py:
 
 	./csv_us2au_date.py activity.csv activity_datefixed.csv 7
 
-The broker data is in reverse chronological order.  The scripts assume it's
-in chronological order, so needs to be reversed:
+The data processing scripts assume the input data is in chronological
+order.  So if the raw input file is in reverse chronological order, it will
+need to be reversed:
 
 	tac activity_datefixed.csv > activity_datefixed_rev.csv
 
-So now we have sane input data.  
+So now we should have sane input data.  
 
 First we create a database (sqlite for now):
 
-	./models.py
+	./eto-create-db.py
 
 Then import our sanitised data file:
 
-	./import_activity.py activity_datefixed_rev.csv 
+	./eto-import.py activity_datefixed_rev.csv 
 
 Now we can analyse the data and get some profit/loss calculations going:
 
-	./gen_trades.py 
+	./eto-process.py 
 
 Finally, the money shot (so to speak).  Generate output csv files with
 profit/loss calculations for each trade:
 
-	./export_trades.py ProfitLoss
+	./eto-csv-export.py ProfitLoss
 
 This will generate two output files, ProfitLoss_raw_events.csv and
 ProfitLoss_format_events.csv.  They both present the same data in slightly
 different ways.  Both files are suitable for loading in a spreadsheet for
-final tweaking.
+final tweaking/error-checking.
+
 
 
 The Stock/CFD Scripts

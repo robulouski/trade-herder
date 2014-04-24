@@ -1,37 +1,32 @@
 #!/usr/bin/env python
 #
-#  Copyright (c) 2013 Robert Iwancz
-#  robulouski@gmail.com
+#   The Trade Herder Scripts
+#   Copyright (C) 2013-2014 Robert Iwancz
+#   www.voidynullness.net
 #
-#  Permission is hereby granted, free of charge, to any person obtaining a
-#  copy of this software and associated documentation files (the "Software"),
-#  to deal in the Software without restriction, including without limitation
-#  the rights to use, copy, modify, merge, publish, distribute, sublicense,
-#  and/or sell copies of the Software, and to permit persons to whom the
-#  Software is furnished to do so, subject to the following conditions:
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
 #
-#  The above copyright notice and this permission notice shall be included in
-#  all copies or substantial portions of the Software.
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
 #
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-#  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-#  DEALINGS IN THE SOFTWARE.
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-##############################################################################  
+############################################################################
 #
-# models.py
+# models.py 
 # 
 # Minimal database for storing/importing/analysing option trade data.
 #
 
-
-
 from __future__ import division
 import sys
+import logging
 import datetime
 import decimal
 import sqlalchemy
@@ -39,12 +34,13 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship, backref
-#import sqlalchemy.types as types
+
+logger = logging.getLogger(__name__)
 
 
 class Config(object):
     def __init__(self):
-        self.db_connect_str = 'sqlite:///oxherded.db'
+        self.db_connect_str = 'sqlite:///theto.db'
     
     def is_sqlite(self):
         return True   # for now
@@ -107,9 +103,9 @@ class ActionType(Base):
     @staticmethod
     def populate(session):
         C = ActionType
-        print "Initialising ", C.__tablename__
+        logger.info("Initialising " + C.__tablename__)
         for i in range(1, len(C.NAMES)):
-            print "%d = %s" % (i, C.NAMES[i])
+            logger.debug("%d = %s" % (i, C.NAMES[i]))
             record = C(id=i, label=C.NAMES[i])
             session.add(record)
         session.commit()
@@ -129,9 +125,9 @@ class TradeStatus(Base):
     @staticmethod
     def populate(session):
         C = TradeStatus
-        print "Initialising ", C.__tablename__
+        logger.info("Initialising " + C.__tablename__)
         for i in range(1, len(C.NAMES)):
-            print "%d = %s" % (i, C.NAMES[i])
+            logger.debug("%d = %s" % (i, C.NAMES[i]))
             record = C(id=i, label=C.NAMES[i])
             session.add(record)
         session.commit()
@@ -166,9 +162,9 @@ class CloseReason(Base):
                'Closed at market for a loss, before hitting stop loss.'),
             (999,'UNKNOWN',             'Just...you know...kinda felt like it...')
             )
-        print "Initialising ", __tablename__
+        logger.info("Initialising " + __tablename__)
         for d in data:
-            print "%d = %s" % (d[0], d[1])
+            logger.debug("%d = %s" % (d[0], d[1]))
             record = CloseReason(id=d[0], label=d[1], title=d[2])
             session.add(record)
         session.commit()
@@ -197,7 +193,7 @@ class Exchange(Base):
             )
 
         for d in data:
-            print "%d = %s" % (d[0], d[1])
+            logger.debug("%d = %s" % (d[0], d[1]))
             record = Exchange(id=d[0], label=d[1], title=d[2])
             session.add(record)
         session.commit()
@@ -223,7 +219,7 @@ class Instrument(Base):
             )
 
         for d in data:
-            print "%d = %s" % (d[0], d[1])
+            logger.debug("%d = %s" % (d[0], d[1]))
             record = Instrument(id=d[0], label=d[1])
             session.add(record)
         session.commit()
@@ -320,11 +316,11 @@ class OptionActivity(Base):
         
         if (self.action_id == ActionType.BUY_TO_OPEN):
             if self.net_total_cost != (self.gross_total_cost + self.brokerage + self.fees):
-                print "*** ERROR: Net/Gross calculation error!"
+                logger.error("*** ERROR: Net/Gross calculation error!")
                 raise ModelsError('init_with_list', "Net/Gross calculation error!")
         elif (self.action_id == ActionType.SELL_TO_CLOSE):
             if self.net_total_cost != (self.gross_total_cost - self.brokerage - self.fees):
-                print "*** ERROR: Net/Gross calculation error!"
+                logger.error("*** ERROR: Net/Gross calculation error!")
                 raise ModelsError('init_with_list', "Net/Gross calculation error!")
 
 
@@ -364,18 +360,16 @@ class OptionTrade(Base):
         self.num_opens = 0
         self.num_closes = 0
 
+
 def db_populate_ref(session):
     # "Enums"
     ActionType.populate(session)
     TradeStatus.populate(session)
 
 
-#
-# MAIN 
-#  - For now, used to create a fresh database from scratch.
-#  - Therefore any existing database will, obviously, be blown away.  Don't
-#    run this script if that would be undesirable.
-#
+
+def db_get_session():
+    return Session()
 
 
 def db_create():
@@ -384,10 +378,9 @@ def db_create():
     Base.metadata.create_all(engine) 
     db_populate_ref(session)
 
+
 def db_refresh_trades():
     t = Base.metadata.tables['option_trade']
     t.drop(engine, True)
     t.create(engine)
 
-if __name__ ==  "__main__":
-    db_create()
